@@ -1,0 +1,20 @@
+services:
+  libsql:
+    image: ghcr.io/tursodatabase/libsql-server@sha256:6dd3eb276d9d3604e4a48ac4a999a2e267814732d57d7e94c04ba71482333a67
+    command:
+      [
+        'sqld',
+        '--enable-namespaces',
+        '--disable-default-namespace',
+        '--http-listen-addr',
+        '0.0.0.0:8080',
+        '--admin-listen-addr',
+        '0.0.0.0:8081',
+      ]
+    ports:
+      - '127.0.0.1:8080:8080'
+      - '127.0.0.1:8081:8081'
+    volumes:
+      - databases-dev:/var/lib/sqld
+volumes:
+  databases-dev:

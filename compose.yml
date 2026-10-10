@@ -1,0 +1,33 @@
+services:
+  localturso:
+    build: .
+    ports:
+      - '5050:5050'
+    environment:
+      LOCALTURSO_ORG: ${LOCALTURSO_ORG:-local}
+      LOCALTURSO_PLATFORM_TOKEN: ${LOCALTURSO_PLATFORM_TOKEN:-localturso-platform-token}
+      LOCALTURSO_PUBLIC_URL: ${LOCALTURSO_PUBLIC_URL:-http://127.0.0.1:5050}
+      LIBSQL_URL: http://libsql:8080
+      LIBSQL_ADMIN_URL: http://libsql:8081
+    volumes:
+      - platform:/usr/src/app/data
+    depends_on:
+      libsql:
+        condition: service_started
+  libsql:
+    image: ghcr.io/tursodatabase/libsql-server@sha256:6dd3eb276d9d3604e4a48ac4a999a2e267814732d57d7e94c04ba71482333a67
+    command:
+      [
+        'sqld',
+        '--enable-namespaces',
+        '--disable-default-namespace',
+        '--http-listen-addr',
+        '0.0.0.0:8080',
+        '--admin-listen-addr',
+        '0.0.0.0:8081',
+      ]
+    volumes:
+      - databases:/var/lib/sqld
+volumes:
+  platform:
+  databases:
