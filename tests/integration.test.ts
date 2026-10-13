@@ -102,6 +102,38 @@ describe.skipIf(process.env.RUN_INTEGRATION !== '1')('official SDK + real libSQL
       404,
     );
   });
+  it('matches measured cloud name limits and ignores token body options', async () => {
+    const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+    await db('a'.repeat(57));
+    for (const name of ['a'.repeat(58), '-invalid', 'invalid-']) {
+      const response = await fetch(`${origin}/v1/organizations/local/databases`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name, group: 'default' }),
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ code: 'invalid_name' });
+    }
+    const nonexistent = await fetch(
+      `${origin}/v1/organizations/local/databases/${'a'.repeat(64)}`,
+      { headers },
+    );
+    expect(nonexistent.status).toBe(404);
+    const issued = await fetch(
+      `${origin}/v1/organizations/local/databases/${'a'.repeat(57)}/auth/tokens`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ expiration: '1h', authorization: 'read-only' }),
+      },
+    );
+    expect(issued.status).toBe(200);
+    const { jwt } = await issued.json();
+    const client = await connect('a'.repeat(57), jwt);
+    await expect(
+      client.execute('CREATE TABLE cloud_probe (id INTEGER PRIMARY KEY)'),
+    ).resolves.toBeDefined();
+  });
   it('creates resources and executes parameterized SQL, batches and transactions', async () => {
     expect((await api.groups.list())[0]!.name).toBe('default');
     await api.groups.create('integration', 'local');

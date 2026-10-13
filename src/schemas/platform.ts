@@ -6,16 +6,25 @@ export const nameSchema = z
   .regex(/^[a-z0-9-]+$/);
 export const createDatabaseSchema = z
   .object({
-    name: nameSchema,
+    name: z.string().default(''),
     group: nameSchema.default('default'),
+    image: z.never().optional(),
+    extensions: z.never().optional(),
+    type: z.never().optional(),
+    location: z.literal('local').optional(),
+    remote_encryption: z.never().optional(),
+    size_limit: z.never().optional(),
+    schema: z.never().optional(),
+    is_schema: z.never().optional(),
+    use_turso_db: z.never().optional(),
     seed: z
       .object({ type: z.literal('database'), name: nameSchema })
       .strict()
       .optional(),
   })
-  .strict();
+  .strip();
 export const createGroupSchema = z
-  .object({ name: nameSchema, location: z.literal('local') })
+  .object({ name: z.string().default(''), location: z.literal('local') })
   .strict();
 export const databaseConfigSchema = z
   .object({

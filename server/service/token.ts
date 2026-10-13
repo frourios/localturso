@@ -7,15 +7,44 @@ import { settings, type DatabaseRecord, type GroupRecord } from './schema';
 
 export function expirationSeconds(value: string): number | undefined {
   if (value === 'never') return undefined;
-  const parts = [...value.matchAll(/(\d+)([wdhms])/g)];
+  // Turso also accepts an absolute Unix timestamp. Zero means no expiration.
+  if (/^[+-]?\d+$/.test(value)) {
+    const timestamp = Number(value);
+    if (timestamp === 0) return undefined;
+    const seconds = timestamp - Math.floor(Date.now() / 1000);
+    assertPlatform(
+      Number.isSafeInteger(timestamp) && seconds > 0,
+      400,
+      'expiration is in the past',
+    );
+    return seconds;
+  }
+  const parts = [...value.matchAll(/(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|w|d|h|m|s)/g)];
   assertPlatform(
     parts.length > 0 && parts.map((p) => p[0]).join('') === value,
     400,
     'Invalid expiration format',
   );
-  const units: Record<string, number> = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
-  const seconds = parts.reduce((n, p) => n + Number(p[1]) * units[p[2]!], 0);
-  assertPlatform(Number.isSafeInteger(seconds) && seconds > 0, 400, 'Invalid expiration format');
+  const units: Record<string, number> = {
+    w: 604800,
+    d: 86400,
+    h: 3600,
+    m: 60,
+    s: 1,
+    ms: 0.001,
+    us: 0.000001,
+    µs: 0.000001,
+    μs: 0.000001,
+    ns: 0.000000001,
+  };
+  const duration = parts.reduce((n, p) => n + Number(p[1]) * units[p[2]!], 0);
+  if (duration === 0) return undefined;
+  const seconds = Math.floor(duration);
+  assertPlatform(
+    Number.isSafeInteger(seconds) && seconds > 0 && duration <= 9223372036,
+    400,
+    'Invalid expiration format',
+  );
   return seconds;
 }
 async function signingKey(store: Store, publicOnly = false) {

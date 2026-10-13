@@ -1,7 +1,7 @@
 import { groupQuery } from '../../../../../../../../../server/domain/group/store/groupQuery';
 import { getStore } from '../../../../../../../../../server/service/drizzleClient';
 import { json } from '../../../../../../../../../server/service/http';
-import { platformRoute } from '../../../../../../../../../server/service/platformRoute';
+import { groupPlatformRoute as platformRoute } from '../../../../../../../../../server/service/platformRoute';
 import { createToken } from '../../../../../../../../../server/service/token';
 import { rejectTokenBody } from '../../../../../../../../../server/service/tokenRequest';
 import { tokenQuerySchema } from '../../../../../../../../schemas/platform';

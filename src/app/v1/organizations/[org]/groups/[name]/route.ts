@@ -3,7 +3,7 @@ import { groupQuery } from '../../../../../../../server/domain/group/store/group
 import { GroupUseCase } from '../../../../../../../server/domain/group/useCase/groupUseCase';
 import { getStore } from '../../../../../../../server/service/drizzleClient';
 import { json } from '../../../../../../../server/service/http';
-import { platformRoute } from '../../../../../../../server/service/platformRoute';
+import { groupPlatformRoute as platformRoute } from '../../../../../../../server/service/platformRoute';
 export { options as OPTIONS } from '../../../../../../../server/service/http';
 
 export const GET = platformRoute<{ org: string; name: string }>(async (_request, { name }) =>

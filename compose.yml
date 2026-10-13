@@ -5,6 +5,7 @@ services:
       - '5050:5050'
     environment:
       LOCALTURSO_ORG: ${LOCALTURSO_ORG:-local}
+      LOCALTURSO_TOKEN_GROUP: ${LOCALTURSO_TOKEN_GROUP:-}
       LOCALTURSO_PLATFORM_TOKEN: ${LOCALTURSO_PLATFORM_TOKEN:-localturso-platform-token}
       LOCALTURSO_PUBLIC_URL: ${LOCALTURSO_PUBLIC_URL:-http://127.0.0.1:5050}
       LIBSQL_URL: http://libsql:8080

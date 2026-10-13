@@ -2,7 +2,7 @@ import { groupQuery } from '../../../../../../../../server/domain/group/store/gr
 import { GroupUseCase } from '../../../../../../../../server/domain/group/useCase/groupUseCase';
 import { getStore } from '../../../../../../../../server/service/drizzleClient';
 import { json, readJson } from '../../../../../../../../server/service/http';
-import { platformRoute } from '../../../../../../../../server/service/platformRoute';
+import { groupPlatformRoute as platformRoute } from '../../../../../../../../server/service/platformRoute';
 import { groupConfigSchema } from '../../../../../../../schemas/platform';
 export { options as OPTIONS } from '../../../../../../../../server/service/http';
 

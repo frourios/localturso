@@ -18,6 +18,7 @@ services:
       - '5050:5050'
     environment:
       LOCALTURSO_ORG: ${LOCALTURSO_ORG:-local}
+      LOCALTURSO_TOKEN_GROUP: ${LOCALTURSO_TOKEN_GROUP:-}
       LOCALTURSO_PLATFORM_TOKEN: ${LOCALTURSO_PLATFORM_TOKEN:-localturso-platform-token}
       LOCALTURSO_PUBLIC_URL: ${LOCALTURSO_PUBLIC_URL:-http://127.0.0.1:5050}
       LIBSQL_URL: http://libsql:8080
@@ -143,16 +144,17 @@ npm run test:integration
 
 ## Configuration
 
-| Variable                    | Default                     | Purpose                                    |
-| --------------------------- | --------------------------- | ------------------------------------------ |
-| `PORT`                      | `5050` in Docker            | Production HTTP listen port                |
-| `HOST`                      | `0.0.0.0`                   | Production listen address                  |
-| `LOCALTURSO_ORG`            | `local`                     | Single local organization slug             |
-| `LOCALTURSO_PLATFORM_TOKEN` | `localturso-platform-token` | Bearer credential for Platform API         |
-| `LOCALTURSO_PUBLIC_URL`     | `http://127.0.0.1:5050`     | URL used to generate SQL client endpoints  |
-| `LOCALTURSO_DATA_DIR`       | `./data`                    | Drizzle metadata and signing-key directory |
-| `LIBSQL_URL`                | `http://127.0.0.1:8080`     | Internal libSQL SQL endpoint               |
-| `LIBSQL_ADMIN_URL`          | `http://127.0.0.1:8081`     | Internal namespace admin endpoint          |
+| Variable                    | Default                     | Purpose                                                                                  |
+| --------------------------- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| `PORT`                      | `5050` in Docker            | Production HTTP listen port                                                              |
+| `HOST`                      | `0.0.0.0`                   | Production listen address                                                                |
+| `LOCALTURSO_ORG`            | `local`                     | Single local organization slug                                                           |
+| `LOCALTURSO_PLATFORM_TOKEN` | `localturso-platform-token` | Bearer credential for Platform API                                                       |
+| `LOCALTURSO_PUBLIC_URL`     | `http://127.0.0.1:5050`     | URL used to generate SQL client endpoints                                                |
+| `LOCALTURSO_TOKEN_GROUP`    | unset                       | Optional group scope for the Platform credential; the group is initialized automatically |
+| `LOCALTURSO_DATA_DIR`       | `./data`                    | Drizzle metadata and signing-key directory                                               |
+| `LIBSQL_URL`                | `http://127.0.0.1:8080`     | Internal libSQL SQL endpoint                                                             |
+| `LIBSQL_ADMIN_URL`          | `http://127.0.0.1:8081`     | Internal namespace admin endpoint                                                        |
 
 ## API coverage
 
@@ -178,7 +180,7 @@ Every Platform route requires `Authorization: Bearer <platform-token>`. Resource
 | SQL metadata/export      | `GET /db/:uuid/version`, `/health`, `/dump`                                            | Delegated to sqld; requires DB/group token                       |
 | Health                   | `GET /publicApi/health`                                                                | Checks metadata and libSQL admin connectivity; no token required |
 
-Token endpoints accept `?expiration=never` (default) or compound durations such as `1w2d6h30m`, and `?authorization=full-access` (default) or `read-only`. Default SDK permission bodies with an empty `read_attach.databases` array are accepted. Custom attach permissions are rejected with 501.
+Token endpoints accept `?expiration=never` (default), zero (`0`/`0s`, no expiry), positive future Unix timestamps, or compound/fractional durations such as `1w2d6h30m` and `1.5h`, and `?authorization=full-access` (default) or `read-only`. Sub-second durations are truncated to whole seconds; a positive duration shorter than one second is rejected. Default SDK permission bodies with an empty `read_attach.databases` array are accepted. `expiration` and `authorization` in a JSON body are ignored; set these options in the query string. Custom attach permissions are rejected with 501.
 
 Database create/retrieve/list responses preserve Turso's `Name`, `DbId`, `Hostname` casing. The official SDK maps them to `name`, `id`, `hostname`. Deletion returns `{ database: "name" }`. Token issuance returns `{ jwt: "..." }`. Token rotation returns `{}` so the official SDK can parse the response.
 
@@ -192,7 +194,7 @@ Database create/retrieve/list responses preserve Turso's `Name`, `DbId`, `Hostna
 - SQL supports HTTP JSON Hrana, not WebSocket/protobuf, embedded replica sync, or Turso's newer database engine/sync protocol.
 - Cursor responses are buffered while their routing header is rewritten; this is intended for local tests, not large production exports.
 - Historical point-in-time forks, upload seeds, shared schema databases, remote encryption, size limits, IP/VPC access policies, billing/usage accounting, instances, team members, invites, API-token lifecycle, and v2/v3 Platform APIs are not implemented.
-- Undefined endpoints return 404, and unsupported HTTP methods on defined routes return 405. Unsupported input fields return 400; unsupported token permissions return 501.
+- Undefined endpoints return 404, and unsupported HTTP methods on defined routes return 405. Unimplemented known options return 400; unknown database-create and token-body fields are ignored as in the cloud. Unsupported token permissions return 501.
 - The app runs as a single process. Control-plane mutations are serialized in that process. Namespace operations and metadata updates span two stores and cannot form a distributed transaction. Creation compensates for ordinary metadata write failures; crashes between operations may leave orphan namespaces or stale metadata. This is a test emulator, not a replacement for Turso Cloud's control plane.
 - Keep the metadata and SQL volumes together when backing up or restoring. Losing metadata also loses signing keys and the mapping to namespaces.
 - libSQL's admin port must remain private. The compose stack publishes only the authenticated application gateway; accessing sqld directly bypasses LocalTurso's token invalidation and scope checks.
@@ -236,6 +238,14 @@ This follows Magnito's separation of React UI and App Router handlers from serve
 - `server/service`: environment validation, Drizzle initialization, serialization, JWT handling, HTTP errors, libSQL admin adapter, and SQL proxy.
 - `drizzle`: checked-in metadata migrations.
 - `tests`: isolated metadata/API tests and SDK integration tests against real sqld and the built production server.
+
+Database and group names use lowercase ASCII letters, digits, and interior hyphens. Names cannot start/end with a hyphen. The maximum name length is `63 - LOCALTURSO_ORG.length - 1`, accounting for the organization suffix in the DNS label. Invalid names on creation return HTTP 400 with `code: "invalid_name"`. For `local`, 57 characters succeed and 58 fail; in the cloud organization tested on 2026-10-13 (six characters), 56 succeed and 57 fail. This replaces the incorrect fixed 64-character limit. A nonexistent group when creating a database returns 404. Resource lookups do not repeat creation validation: a nonexistent oversized, uppercase, or edge-hyphen name returns 404. Previously created local databases with oversized names remain accessible for cleanup.
+
+By default the Platform credential has organization-wide access. Set `LOCALTURSO_TOKEN_GROUP` to model a group-scoped Platform token: database creation requires an explicit matching `group`, lists and resource access are limited to that group, and group creation returns 403. This setting does not change database/group SQL JWT permissions.
+
+Cloud probes confirmed the above behavior and ordinary create/get/delete, duplicate creation, read-only SQL enforcement, and token rotation. Request/response observations are saved without credentials in `tests/fixtures/cloud-observations.json`. Re-run the isolated DB-name/token probe with `node --env-file=/path/to/development.env batches/probe-cloud.mjs`; it uses `TURSO_ORG`, `TURSO_GROUP`, and `TURSO_PLATFORM_TOKEN`, creates only uniquely named probe databases, and deletes them in `finally`. It is opt-in and never runs in CI. It does not exhaust account quotas or measure throughput limits.
+
+Intentional differences remain: the observed cloud endpoint returns 500 for an invalid token authorization value, while LocalTurso returns 400; a fresh cloud token returned `SERVER_ERROR` immediately after rotation and succeeded after a two-second delay in the probe, while local invalidation is immediate; SQL error codes and JWT claim layouts can differ with the server version. Billing/resource quotas, performance, and cloud replication are not emulated.
 
 Database names are validated separately from namespace IDs. Each database is backed by an immutable UUID namespace. SQL clients address `/db/<uuid>/`; the proxy looks up that UUID in the metadata, verifies DB/group claims and token generations, and sets `x-namespace` itself when forwarding to sqld. Client-provided routing headers are never forwarded.
 

@@ -27,7 +27,11 @@ export async function handle(operation: () => Promise<Response>): Promise<Respon
   try {
     return await operation();
   } catch (error) {
-    if (error instanceof PlatformError) return json({ error: error.message }, error.status);
+    if (error instanceof PlatformError)
+      return json(
+        { ...(error.code ? { code: error.code } : {}), error: error.message },
+        error.status,
+      );
     if (error instanceof ZodError)
       return json(
         { error: error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') },

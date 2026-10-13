@@ -23,7 +23,7 @@ export async function rejectTokenBody(request: Request) {
         .strict()
         .optional(),
     })
-    .strict();
+    .strip();
   assertPlatform(
     emptyPermissions.safeParse(body).success,
     501,

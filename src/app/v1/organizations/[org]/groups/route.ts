@@ -3,12 +3,17 @@ import { groupQuery } from '../../../../../../server/domain/group/store/groupQue
 import { GroupUseCase } from '../../../../../../server/domain/group/useCase/groupUseCase';
 import { getStore } from '../../../../../../server/service/drizzleClient';
 import { json, readJson } from '../../../../../../server/service/http';
-import { platformRoute } from '../../../../../../server/service/platformRoute';
+import { groupPlatformRoute as platformRoute } from '../../../../../../server/service/platformRoute';
+import { env } from '../../../../../../server/service/serverEnvs';
 import { createGroupSchema } from '../../../../../schemas/platform';
 export { options as OPTIONS } from '../../../../../../server/service/http';
 
 export const GET = platformRoute<{ org: string }>(async () =>
-  json({ groups: (await groupQuery.list(await getStore())).map(toGroupDto) }),
+  json({
+    groups: (await groupQuery.list(await getStore()))
+      .filter((group) => !env.LOCALTURSO_TOKEN_GROUP || group.name === env.LOCALTURSO_TOKEN_GROUP)
+      .map(toGroupDto),
+  }),
 );
 
 export const POST = platformRoute<{ org: string }>(async (request) => {

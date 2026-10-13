@@ -16,7 +16,14 @@ export async function createStore(directory: string) {
   await migrate(db, { migrationsFolder: resolve('drizzle') });
   await db
     .insert(schema.groups)
-    .values({ name: 'default', id: randomUUID(), location: 'local' })
+    .values(
+      [
+        ...new Set([
+          'default',
+          ...(env.LOCALTURSO_TOKEN_GROUP ? [env.LOCALTURSO_TOKEN_GROUP] : []),
+        ]),
+      ].map((name) => ({ name, id: randomUUID(), location: 'local' })),
+    )
     .onConflictDoNothing();
   const { privateKey } = await generateKeyPair('EdDSA', { extractable: true });
   await db

@@ -3,7 +3,9 @@ import { databaseQuery } from '../../../../../../server/domain/database/store/da
 import { DatabaseUseCase } from '../../../../../../server/domain/database/useCase/databaseUseCase';
 import { getStore } from '../../../../../../server/service/drizzleClient';
 import { json, readJson } from '../../../../../../server/service/http';
+import { assertPlatform } from '../../../../../../server/service/platformError';
 import { platformRoute } from '../../../../../../server/service/platformRoute';
+import { env } from '../../../../../../server/service/serverEnvs';
 import { createDatabaseSchema } from '../../../../../schemas/platform';
 export { options as OPTIONS } from '../../../../../../server/service/http';
 
@@ -11,6 +13,7 @@ export const GET = platformRoute<{ org: string }>(async (request) => {
   const url = new URL(request.url);
   const records = (await databaseQuery.list(await getStore())).filter(
     (db) =>
+      (!env.LOCALTURSO_TOKEN_GROUP || db.group === env.LOCALTURSO_TOKEN_GROUP) &&
       (!url.searchParams.has('group') || db.group === url.searchParams.get('group')) &&
       (!url.searchParams.has('parent') || db.parentId === url.searchParams.get('parent')),
   );
@@ -18,8 +21,15 @@ export const GET = platformRoute<{ org: string }>(async (request) => {
 });
 
 export const POST = platformRoute<{ org: string }>(async (request) => {
+  const body = await readJson(request);
+  if (env.LOCALTURSO_TOKEN_GROUP)
+    assertPlatform(
+      body && typeof body === 'object' && 'group' in body && body.group !== undefined,
+      403,
+      'group-scoped tokens must specify a group in the request',
+    );
   const record = await new DatabaseUseCase(await getStore()).create(
-    createDatabaseSchema.parse(await readJson(request)),
+    createDatabaseSchema.parse(body),
   );
   const dto = toDatabaseDto(record);
   return json({ database: { DbId: dto.DbId, Hostname: dto.Hostname, Name: dto.Name } });

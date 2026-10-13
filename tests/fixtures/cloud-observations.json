@@ -1,0 +1,577 @@
+{
+  "observedAt": "2026-10-13",
+  "organizationLength": 6,
+  "nameLimit": 56,
+  "cleanupRemainingDatabases": 0,
+  "observations": [
+    {
+      "label": "configured-group",
+      "status": 200
+    },
+    {
+      "label": "database-name-length-32",
+      "status": 200
+    },
+    {
+      "label": "database-name-length-48",
+      "status": 200
+    },
+    {
+      "label": "database-name-length-52",
+      "status": 200
+    },
+    {
+      "label": "database-name-length-56",
+      "status": 200
+    },
+    {
+      "label": "database-name-length-57",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name must contain between 1 and 56 characters"
+      }
+    },
+    {
+      "label": "database-name-length-61",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name must contain between 1 and 56 characters"
+      }
+    },
+    {
+      "label": "database-name-length-64",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name must contain between 1 and 56 characters"
+      }
+    },
+    {
+      "label": "uppercase",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name may only contain numbers, lowercase letters, and dashes"
+      }
+    },
+    {
+      "label": "underscore",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name may only contain numbers, lowercase letters, and dashes"
+      }
+    },
+    {
+      "label": "leading-hyphen",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name may not start or end with a dash"
+      }
+    },
+    {
+      "label": "trailing-hyphen",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name may not start or end with a dash"
+      }
+    },
+    {
+      "label": "missing-group",
+      "status": 404,
+      "body": {
+        "error": "group [probe]-absent not found"
+      }
+    },
+    {
+      "label": "missing-group-field",
+      "status": 403,
+      "body": {
+        "error": "group-scoped tokens must specify a group in the request"
+      }
+    },
+    {
+      "label": "valid-create",
+      "status": 200
+    },
+    {
+      "label": "duplicate-create",
+      "status": 409,
+      "body": {
+        "error": "database with same name already exists"
+      }
+    },
+    {
+      "label": "retrieve",
+      "status": 200,
+      "fields": [
+        "Name",
+        "DbId",
+        "Hostname",
+        "is_schema",
+        "block_reads",
+        "block_writes",
+        "allow_attach",
+        "delete_protection",
+        "regions",
+        "primaryRegion",
+        "type",
+        "hostname",
+        "group",
+        "sleeping",
+        "archived",
+        "schema",
+        "parent",
+        "server_type",
+        "group_id",
+        "database_type",
+        "auth_role_id",
+        "parent_db_id",
+        "parent_name",
+        "parent_branched_at"
+      ]
+    },
+    {
+      "label": "token-expiration=1h&authorization=full-access",
+      "status": 200,
+      "claims": {
+        "fields": ["a", "exp", "iat", "id", "kid", "rid"],
+        "access": "rw",
+        "expires": 3601
+      }
+    },
+    {
+      "label": "token-expiration=1h&authorization=read-only",
+      "status": 200,
+      "claims": {
+        "fields": ["a", "exp", "iat", "id", "kid", "rid"],
+        "access": "ro",
+        "expires": 3602
+      }
+    },
+    {
+      "label": "token-expiration=bad&authorization=full-access",
+      "status": 400,
+      "body": {
+        "error": "invalid expiration: strconv.Atoi: parsing \"bad\": invalid syntax"
+      }
+    },
+    {
+      "label": "token-expiration=1h&authorization=bad",
+      "status": 500,
+      "body": {
+        "error": "internal server error"
+      }
+    },
+    {
+      "label": "token-defaults",
+      "status": 200,
+      "claims": {
+        "fields": ["a", "iat", "id", "kid", "rid"],
+        "access": "rw",
+        "expires": null
+      }
+    },
+    {
+      "label": "delete-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-main: record not found"
+      }
+    },
+    {
+      "label": "get-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-absent: record not found"
+      }
+    },
+    {
+      "label": "configured-group",
+      "status": 200
+    },
+    {
+      "label": "valid-create",
+      "status": 200
+    },
+    {
+      "label": "unknown-field",
+      "status": 200
+    },
+    {
+      "label": "missing-name",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name must contain between 1 and 56 characters"
+      }
+    },
+    {
+      "label": "numeric-name",
+      "status": 400,
+      "body": {
+        "error": "json: cannot unmarshal number into Go struct field CreateDBParams.Name of type string"
+      }
+    },
+    {
+      "label": "empty-name",
+      "status": 400,
+      "body": {
+        "code": "invalid_name",
+        "error": "invalid database name: name must contain between 1 and 56 characters"
+      }
+    },
+    {
+      "label": "missing-seed",
+      "status": 404,
+      "body": {
+        "error": "cannot fork database: can't find database with name [probe]-absent"
+      }
+    },
+    {
+      "label": "expiration-60",
+      "status": 400,
+      "body": {
+        "error": "expiration is in the past"
+      }
+    },
+    {
+      "label": "expiration-0",
+      "status": 200,
+      "ttl": null
+    },
+    {
+      "label": "expiration--1",
+      "status": 400,
+      "body": {
+        "error": "expiration is in the past"
+      }
+    },
+    {
+      "label": "expiration-1h30m",
+      "status": 200,
+      "ttl": 5401
+    },
+    {
+      "label": "expiration-1y",
+      "status": 400,
+      "body": {
+        "error": "invalid expiration: strconv.Atoi: parsing \"1y\": invalid syntax"
+      }
+    },
+    {
+      "label": "expiration-1mo",
+      "status": 400,
+      "body": {
+        "error": "invalid expiration: strconv.Atoi: parsing \"1mo\": invalid syntax"
+      }
+    },
+    {
+      "label": "expiration-1H",
+      "status": 400,
+      "body": {
+        "error": "invalid expiration: strconv.Atoi: parsing \"1H\": invalid syntax"
+      }
+    },
+    {
+      "label": "expiration-1.5h",
+      "status": 200,
+      "ttl": 5401
+    },
+    {
+      "label": "expiration-never",
+      "status": 200,
+      "ttl": null
+    },
+    {
+      "label": "token-body",
+      "input": {
+        "expiration": "1h",
+        "authorization": "read-only"
+      },
+      "status": 200,
+      "claims": {
+        "a": "rw",
+        "ttl": null
+      }
+    },
+    {
+      "label": "token-body",
+      "input": {
+        "unknown": true
+      },
+      "status": 200,
+      "claims": {
+        "a": "rw",
+        "ttl": null
+      }
+    },
+    {
+      "label": "configuration",
+      "status": 200,
+      "body": {
+        "block_reads": false,
+        "block_writes": false,
+        "size_limit": "",
+        "delete_protection": false
+      }
+    },
+    {
+      "label": "delete-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-main: record not found"
+      }
+    },
+    {
+      "label": "get-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-absent: record not found"
+      }
+    },
+    {
+      "label": "configured-group",
+      "status": 200
+    },
+    {
+      "label": "valid-create",
+      "status": 200
+    },
+    {
+      "label": "expiration-1w",
+      "status": 200,
+      "ttl": 604800
+    },
+    {
+      "label": "expiration-1d",
+      "status": 200,
+      "ttl": 86401
+    },
+    {
+      "label": "expiration-1w2d3h4m5s",
+      "status": 200,
+      "ttl": 788645
+    },
+    {
+      "label": "expiration-0s",
+      "status": 200,
+      "ttl": null
+    },
+    {
+      "label": "expiration-500ms",
+      "status": 400,
+      "body": {
+        "error": "failed to parse expiration: expiration is in the past"
+      }
+    },
+    {
+      "label": "expiration-1000000us",
+      "status": 200,
+      "ttl": 1
+    },
+    {
+      "label": "expiration-1000000000ns",
+      "status": 200,
+      "ttl": 2
+    },
+    {
+      "label": "expiration--1h",
+      "status": 400,
+      "body": {
+        "error": "failed to parse expiration: expiration is in the past"
+      }
+    },
+    {
+      "label": "expiration-1.25m",
+      "status": 200,
+      "ttl": 75
+    },
+    {
+      "label": "expiration-1791870029",
+      "status": 200,
+      "ttl": 297
+    },
+    {
+      "label": "delete-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-main: record not found"
+      }
+    },
+    {
+      "label": "get-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-absent: record not found"
+      }
+    },
+    {
+      "label": "configured-group",
+      "status": 200
+    },
+    {
+      "label": "valid-create",
+      "status": 200
+    },
+    {
+      "label": "list-groups",
+      "status": 200,
+      "count": 1
+    },
+    {
+      "label": "other-group-get",
+      "status": 404,
+      "body": {
+        "error": "group not found"
+      }
+    },
+    {
+      "label": "other-group-create-database",
+      "status": 404,
+      "body": {
+        "error": "group default not found"
+      }
+    },
+    {
+      "label": "create-group",
+      "status": 403,
+      "body": {
+        "error": "group-scoped token cannot access org-level resources"
+      }
+    },
+    {
+      "label": "delete-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-main: record not found"
+      }
+    },
+    {
+      "label": "get-missing",
+      "status": 404,
+      "body": {
+        "error": "could not find database with name [probe]-absent: record not found"
+      }
+    },
+    {
+      "label": "create",
+      "status": 200
+    },
+    {
+      "label": "hostname-suffix",
+      "matchesOrganization": true
+    },
+    {
+      "label": "create-table",
+      "ok": true,
+      "rowCount": 0
+    },
+    {
+      "label": "write-full-access",
+      "ok": true,
+      "rowCount": 0
+    },
+    {
+      "label": "read-read-only",
+      "ok": true,
+      "rowCount": 1
+    },
+    {
+      "label": "write-read-only",
+      "ok": false,
+      "code": "BLOCKED"
+    },
+    {
+      "label": "rotate",
+      "status": 200,
+      "fields": []
+    },
+    {
+      "label": "old-token-after-rotation",
+      "ok": false,
+      "code": "SERVER_ERROR"
+    },
+    {
+      "label": "new-token-after-rotation",
+      "ok": false,
+      "code": "SERVER_ERROR"
+    },
+    {
+      "label": "cleanup",
+      "status": 200
+    },
+    {
+      "label": "create",
+      "status": 200
+    },
+    {
+      "label": "hostname-suffix",
+      "matchesOrganization": true
+    },
+    {
+      "label": "create-table",
+      "ok": true,
+      "rowCount": 0
+    },
+    {
+      "label": "write-full-access",
+      "ok": true,
+      "rowCount": 0
+    },
+    {
+      "label": "read-read-only",
+      "ok": true,
+      "rowCount": 1
+    },
+    {
+      "label": "write-read-only",
+      "ok": false,
+      "code": "BLOCKED"
+    },
+    {
+      "label": "rotate",
+      "status": 200,
+      "fields": []
+    },
+    {
+      "label": "old-token-after-rotation",
+      "ok": false,
+      "code": "SERVER_ERROR"
+    },
+    {
+      "label": "new-token-after-delay-1",
+      "ok": true,
+      "rowCount": 1
+    },
+    {
+      "label": "new-token-after-rotation",
+      "ok": true,
+      "rowCount": 1
+    },
+    {
+      "label": "cleanup",
+      "status": 200
+    },
+    {
+      "label": "get-too-long",
+      "status": 404
+    },
+    {
+      "label": "get-uppercase",
+      "status": 404
+    },
+    {
+      "label": "get-leading-dash",
+      "status": 404
+    },
+    {
+      "label": "get-trailing-dash",
+      "status": 404
+    }
+  ]
+}

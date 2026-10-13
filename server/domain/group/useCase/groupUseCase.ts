@@ -1,6 +1,7 @@
 import type { Store } from '../../../service/drizzleClient';
 import { mutate } from '../../../service/lock';
 import { assertPlatform } from '../../../service/platformError';
+import { validateResourceName } from '../../../service/resourceName';
 import { databaseQuery } from '../../database/store/databaseQuery';
 import { groupMethod } from '../model/groupMethod';
 import { groupCommand } from '../store/groupCommand';
@@ -8,6 +9,7 @@ import { groupQuery } from '../store/groupQuery';
 export class GroupUseCase {
   constructor(private store: Store) {}
   create(name: string, location: string) {
+    validateResourceName(name, 'group');
     return mutate(async () => {
       assertPlatform(
         !(await groupQuery.list(this.store)).some((g) => g.name === name),

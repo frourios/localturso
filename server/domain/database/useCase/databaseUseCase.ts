@@ -3,7 +3,9 @@ import type { createDatabaseSchema, databaseConfigSchema } from '../../../../src
 import type { Store } from '../../../service/drizzleClient';
 import { LibsqlServer } from '../../../service/libsqlServer';
 import { mutate } from '../../../service/lock';
-import { assertPlatform, PlatformError } from '../../../service/platformError';
+import { assertPlatform } from '../../../service/platformError';
+import { validateResourceName } from '../../../service/resourceName';
+import { env } from '../../../service/serverEnvs';
 import { groupQuery } from '../../group/store/groupQuery';
 import { databaseMethod } from '../model/databaseMethod';
 import { databaseCommand } from '../store/databaseCommand';
@@ -14,16 +16,26 @@ export class DatabaseUseCase {
     private server = new LibsqlServer(),
   ) {}
   create(input: z.infer<typeof createDatabaseSchema>) {
+    validateResourceName(input.name, 'database');
     return mutate(async () => {
       assertPlatform(
         !(await databaseQuery.list(this.store)).some((db) => db.name === input.name),
         409,
         `database with name ${input.name} already exists`,
       );
-      await groupQuery.find(this.store, input.group).catch(() => {
-        throw new PlatformError(400, 'group not found');
-      });
+      assertPlatform(
+        !env.LOCALTURSO_TOKEN_GROUP || input.group === env.LOCALTURSO_TOKEN_GROUP,
+        404,
+        'group not found',
+      );
+      await groupQuery.find(this.store, input.group);
       const parent = input.seed ? await databaseQuery.find(this.store, input.seed.name) : undefined;
+      if (parent)
+        assertPlatform(
+          !env.LOCALTURSO_TOKEN_GROUP || parent.group === env.LOCALTURSO_TOKEN_GROUP,
+          404,
+          'database not found',
+        );
       const record = databaseMethod.create(input.name, input.group, parent);
       if (parent) {
         await this.server.fork(parent.id, record.id);

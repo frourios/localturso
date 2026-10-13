@@ -135,12 +135,108 @@ describe('Platform API', () => {
     expect((await request('databases', 'POST', { name: 'tenant-a' })).status).toBe(409);
     expect(
       (await request('databases', 'POST', { name: 'tenant-x', group: 'missing' })).status,
-    ).toBe(400);
+    ).toBe(404);
     expect((await request('databases', 'POST', { name: '../escape' })).status).toBe(400);
     expect(
       (await request('databases', 'POST', { name: 'encrypted', remote_encryption: {} })).status,
     ).toBe(400);
     expect((await request('databases/missing')).status).toBe(404);
+  });
+  it('matches cloud name boundaries and invalid_name error responses', async () => {
+    // Organization "local" contributes five characters, leaving 57 in the DNS label.
+    expect((await request('databases', 'POST', { name: 'a'.repeat(57) })).status).toBe(200);
+    const response = await request('databases', 'POST', { name: 'a'.repeat(58) });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      code: 'invalid_name',
+      error: 'invalid database name: name must contain between 1 and 57 characters',
+    });
+    for (const name of ['-edge', 'edge-', 'UPPER', 'under_score', '']) {
+      const invalid = await request('databases', 'POST', { name });
+      expect(invalid.status).toBe(400);
+      expect(await invalid.json()).toMatchObject({ code: 'invalid_name' });
+    }
+    expect(await (await request('databases', 'POST', {})).json()).toMatchObject({
+      code: 'invalid_name',
+    });
+    const invalidGroup = await request('groups', 'POST', { name: '-bad', location: 'local' });
+    expect(await invalidGroup.json()).toEqual({
+      code: 'invalid_name',
+      error: 'invalid group name: name may not start or end with a dash',
+    });
+    // Cloud lookup does not apply creation validation: nonexistent invalid names return 404.
+    for (const name of ['a'.repeat(64), 'INVALID', '-invalid', 'invalid-'])
+      expect((await request('databases/' + name)).status).toBe(404);
+    // Retrieval/deletion must not reject a name accepted by creation.
+    expect((await request('databases/' + 'a'.repeat(57))).status).toBe(200);
+    expect((await request('databases/' + 'a'.repeat(57), 'DELETE')).status).toBe(200);
+  });
+  it('keeps oversized databases created by older versions accessible for cleanup', async () => {
+    const { databaseMethod } = await import('../server/domain/database/model/databaseMethod');
+    const { databaseCommand } = await import('../server/domain/database/store/databaseCommand');
+    const name = 'a'.repeat(61);
+    await databaseCommand.save(await getStore(), databaseMethod.create(name, 'default'));
+    expect((await request('databases/' + name)).status).toBe(200);
+    expect((await request('databases/' + name, 'DELETE')).status).toBe(200);
+    expect((await request('databases/' + name)).status).toBe(404);
+  });
+  it('ignores token body fields instead of interpreting them as query options', async () => {
+    const result = await body('databases/tenant-a/auth/tokens', 'POST', {
+      expiration: '1h',
+      authorization: 'read-only',
+      unknown: true,
+    });
+    const claims = decodeJwt(result.jwt);
+    expect(claims.a).toBe('rw');
+    expect(claims.exp).toBeUndefined();
+    const readonly = await body(
+      'databases/tenant-a/auth/tokens?authorization=read-only&expiration=1.5h',
+      'POST',
+      { authorization: 'full-access' },
+    );
+    expect(decodeJwt(readonly.jwt)).toMatchObject({ a: 'ro', exp: expect.any(Number) });
+  });
+  it('ignores unknown database fields but rejects unimplemented known features', async () => {
+    expect(
+      (await request('databases', 'POST', { name: 'extra-field', unknown: true })).status,
+    ).toBe(200);
+    expect(
+      (await request('databases', 'POST', { name: 'size-limited', size_limit: '1GB' })).status,
+    ).toBe(400);
+  });
+  it('models group-scoped Platform tokens without affecting SQL group tokens', async () => {
+    const { env } = await import('../server/service/serverEnvs');
+    await body('groups', 'POST', { name: 'outside', location: 'local' });
+    await body('databases', 'POST', { name: 'outside-db', group: 'outside' });
+    env.LOCALTURSO_TOKEN_GROUP = 'default';
+    try {
+      const missing = await request('databases', 'POST', { name: 'scope-missing' });
+      expect(missing.status).toBe(403);
+      expect(await missing.json()).toEqual({
+        error: 'group-scoped tokens must specify a group in the request',
+      });
+      expect(
+        (await request('databases', 'POST', { name: 'scope-valid', group: 'default' })).status,
+      ).toBe(200);
+      expect(
+        (await request('databases', 'POST', { name: 'scope-other', group: 'other' })).status,
+      ).toBe(404);
+      expect(
+        (await request('groups', 'POST', { name: 'new-group', location: 'local' })).status,
+      ).toBe(403);
+      expect((await request('groups/other')).status).toBe(404);
+      expect((await request('groups/outside')).status).toBe(404);
+      expect((await request('databases/outside-db')).status).toBe(404);
+      expect((await request('databases/outside-db/auth/tokens', 'POST')).status).toBe(404);
+      expect(
+        (await body('databases')).databases.some((db: { group: string }) => db.group === 'outside'),
+      ).toBe(false);
+      expect((await body('groups')).groups.map((group: { name: string }) => group.name)).toEqual([
+        'default',
+      ]);
+    } finally {
+      delete env.LOCALTURSO_TOKEN_GROUP;
+    }
   });
   it('serializes concurrent creates', async () => {
     const responses = await Promise.all([
@@ -318,7 +414,21 @@ describe('token expiration', () => {
   it('parses compound durations and rejects partial or unsafe values', () => {
     expect(expirationSeconds('never')).toBeUndefined();
     expect(expirationSeconds('1w2d3h4m5s')).toBe(788645);
-    for (const value of ['0s', '1hour', '-1s', '', '9007199254740992w'])
+    expect(expirationSeconds('0')).toBeUndefined();
+    expect(expirationSeconds('0s')).toBeUndefined();
+    expect(expirationSeconds('1.5h')).toBe(5400);
+    expect(expirationSeconds('1.25m')).toBe(75);
+    expect(expirationSeconds('1000000us')).toBe(1);
+    expect(expirationSeconds('1000000000ns')).toBe(1);
+    const now = Math.floor(Date.now() / 1000);
+    vi.spyOn(Date, 'now').mockReturnValue(now * 1000);
+    try {
+      expect(expirationSeconds(String(now + 300))).toBe(300);
+      expect(() => expirationSeconds('60')).toThrow('expiration is in the past');
+    } finally {
+      vi.mocked(Date.now).mockRestore();
+    }
+    for (const value of ['500ms', '1hour', '-1s', '', '9007199254740992w'])
       expect(() => expirationSeconds(value)).toThrow();
   });
 });
